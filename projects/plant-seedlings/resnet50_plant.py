@@ -6,7 +6,7 @@ _base_ = [
 ]
 
 # 2、全局参数
-max_epochs = 80
+max_epochs = 300
 batch_size = 16
 num_classes = 12
 data_root = 'G:/AI_datasets/plant-seedlings-classification'
@@ -16,6 +16,7 @@ model = dict(
     type='ImageClassifier',
     head=dict(
         num_classes=num_classes,
+        #loss=dict(type='FocalLoss', loss_weight=1.0)
     )
 )
 
@@ -64,7 +65,22 @@ val_dataloader = dict(
     )
 )
 val_cfg = dict()
-val_evaluator = dict(type='Accuracy', topk=(1,))
+# ========= 核心：多评估器 = 分类指标 + 混淆矩阵 =========
+val_evaluator = [
+    # 1. 准确率 Top1
+    dict(type='Accuracy', topk=(1,)),
+    # 2. 单标签分类指标：精确率、召回率、F1-score（支持类别失衡评估）
+    dict(
+        type='SingleLabelMetric',
+        items=['precision', 'recall', 'f1-score'],
+        average='macro'  # macro：每类单独计算再平均，适合类别失衡
+    ),
+    # 3. 混淆矩阵（训练结束打印 + 保存文件）
+     dict(
+        type='ConfusionMatrix',
+        num_classes=num_classes
+    )
+]
 
 # 测试集三参数统一置空
 test_dataloader = None
@@ -73,7 +89,7 @@ test_evaluator = None
 
 # 5、训练优化器 & 学习率调度
 optim_wrapper = dict(
-    optimizer=dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+    optimizer=dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.0001)
 )
 
 param_scheduler = [

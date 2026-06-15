@@ -1,0 +1,1 @@
+python ..\..\tools\train.py .\resnet50_plant.py
