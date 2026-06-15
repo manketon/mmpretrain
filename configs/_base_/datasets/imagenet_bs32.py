@@ -1,5 +1,6 @@
 # dataset settings
 dataset_type = 'ImageNet'
+data_root = 'data/imagenet'
 data_preprocessor = dict(
     num_classes=1000,
     # RGB format normalization parameters
@@ -28,8 +29,8 @@ train_dataloader = dict(
     num_workers=5,
     dataset=dict(
         type=dataset_type,
-        data_root='data/imagenet',
-        split='train',
+        data_root=data_root,
+        data_prefix='train',
         pipeline=train_pipeline),
     sampler=dict(type='DefaultSampler', shuffle=True),
 )
@@ -39,8 +40,8 @@ val_dataloader = dict(
     num_workers=5,
     dataset=dict(
         type=dataset_type,
-        data_root='data/imagenet',
-        split='val',
+        data_root=data_root,
+        data_prefix='val',
         pipeline=test_pipeline),
     sampler=dict(type='DefaultSampler', shuffle=False),
 )
