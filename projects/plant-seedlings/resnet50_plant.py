@@ -1,11 +1,11 @@
-# 使用【绝对路径】继承基配置，彻底解决文件找不到问题
+# 1、使用【绝对路径】继承基配置
 _base_ = [
-    'F:/workspace/py_thirdpart/projectsFromMyGitHub/mmpretrain/configs/_base_/models/resnet50.py',
-    'F:/workspace/py_thirdpart/projectsFromMyGitHub/mmpretrain/configs/_base_/schedules/imagenet_bs256.py',
-    'F:/workspace/py_thirdpart/projectsFromMyGitHub/mmpretrain/configs/_base_/default_runtime.py'
+    '../../configs/_base_/models/resnet50.py',
+    '../../configs/_base_/schedules/imagenet_bs256.py',
+    '../../configs/_base_/default_runtime.py'
 ]
 
-# 全局参数
+# 2、全局参数
 max_epochs = 80
 batch_size = 16
 num_classes = 12
@@ -20,8 +20,8 @@ model = dict(
 )
 
 dataset_type = 'CustomDataset'
-
-# 训练数据流水线
+# 3、数据增强
+# 训练数据流水线 + 异常图片检测
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='RandomResizedCrop', scale=224),
@@ -29,18 +29,20 @@ train_pipeline = [
     dict(type='PackInputs'),
 ]
 
-# 验证数据流水线
+# 验证数据流水线 + 异常图片检测
 val_pipeline = [
     dict(type='LoadImageFromFile'),
-    dict(type='Resize', scale=(256, -1)),
+    dict(type='ResizeEdge', scale=256, edge='short'),
     dict(type='CenterCrop', crop_size=224),
     dict(type='PackInputs'),
 ]
 
-# 训练集加载器 Windows 固定 num_workers=0
+# 4. 数据集加载（ImageFolder 读取文件夹分类）
+# 训练集：关闭多进程 + 关闭持久进程
 train_dataloader = dict(
     batch_size=batch_size,
-    num_workers=1,
+    num_workers=0, #windows中多进程会有问题，暂时设置为0
+    persistent_workers=False,  # num_workers>0时需要开启，num_workers=0时需要关闭
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
@@ -49,10 +51,11 @@ train_dataloader = dict(
     )
 )
 
-# 验证集全套配置（三参数成对出现）
+# 验证集：同步关闭持久进程
 val_dataloader = dict(
     batch_size=batch_size,
-    num_workers=1,
+    num_workers=0,
+    persistent_workers=False,  # 关键修复
     dataset=dict(
         type=dataset_type,
         data_root=data_root,
@@ -68,12 +71,11 @@ test_dataloader = None
 test_cfg = None
 test_evaluator = None
 
-# 训练优化器 & 学习率调度
+# 5、训练优化器 & 学习率调度
 optim_wrapper = dict(
     optimizer=dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
 )
 
-# learning rate scheduler
 param_scheduler = [
     dict(
         type='LinearLR',
@@ -93,9 +95,19 @@ param_scheduler = [
 
 train_cfg = dict(max_epochs=max_epochs, val_interval=1)
 
-# 日志 & 权重保存
+# 6、日志 & 权重保存
 default_hooks = dict(
     checkpoint=dict(interval=5, save_best='auto'),
     logger=dict(type='LoggerHook', interval=10)
 )
-randomness = dict(seed=0, diff_rank_seed=True)
+# 7. 随机种子，保证复现
+randomness = dict(seed=0, deterministic=False, diff_rank_seed=False)
+
+
+
+"""
+继承的是配置字典里的字段，而不是「裸顶层变量」。
+字典字段（dataloader /model 这类 dict）
+规则：
+当前文件只写部分字段 → 和基文件同名字典做深度合并，同名 key 覆盖，缺失 key 沿用基文件。
+"""
