@@ -16,7 +16,7 @@ model = dict(
     type='ImageClassifier',
     head=dict(
         num_classes=num_classes,
-        #loss=dict(type='FocalLoss', loss_weight=1.0)
+        loss=dict(type='FocalLoss', loss_weight=1.0)
     )
 )
 
